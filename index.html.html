@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNP乗り換えタイミングチェックツール</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .modal-backdrop {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">MNP乗り換えタイミングチェックツール</h1>
+            <p class="text-gray-600">あなたの回線情報をリアルタイムで分析し、最適な乗り換えタイミングを提案します。</p>
+        </header>
+
+        <section id="dashboard-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white p-4 rounded-lg shadow-sm text-center">
+                <h2 class="text-sm font-medium text-gray-500">総回線数</h2>
+                <p id="total-lines" class="text-2xl font-bold">0</p>
+            </div>
+            <div class="bg-green-100 border border-green-200 p-4 rounded-lg shadow-sm text-center">
+                <h2 class="text-sm font-medium text-green-700">今すぐOK</h2>
+                <p id="ready-lines" class="text-2xl font-bold text-green-800">0</p>
+            </div>
+            <div class="bg-yellow-100 border border-yellow-200 p-4 rounded-lg shadow-sm text-center">
+                <h2 class="text-sm font-medium text-yellow-700">30日以内</h2>
+                <p id="approaching-lines" class="text-2xl font-bold text-yellow-800">0</p>
+            </div>
+            <div class="bg-blue-100 border border-blue-200 p-4 rounded-lg shadow-sm text-center">
+                <h2 class="text-sm font-medium text-blue-700">待機中</h2>
+                <p id="waiting-lines" class="text-2xl font-bold text-blue-800">0</p>
+            </div>
+        </section>
+        
+        <div class="flex justify-end mb-6">
+            <button id="add-line-btn" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75 transition">
+                ＋ 新規回線を追加
+            </button>
+        </div>
+
+        <main id="lines-container" class="space-y-4">
+            </main>
+    </div>
+
+    <footer class="text-center py-6">
+        <p class="text-sm text-gray-500">
+            製作者：<a href="https://x.com/mappy_fukugyo" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">まっぴー</a>
+        </p>
+    </footer>
+
+    <div id="modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 modal-backdrop opacity-0 pointer-events-none overflow-y-auto">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 modal-content transform scale-95 my-8">
+            <h2 id="modal-title" class="text-xl font-bold mb-6">新規回線を追加</h2>
+            <form id="line-form">
+                <input type="hidden" id="entry-id">
+                <div class="space-y-4">
+                    <div>
+                        <label for="phone-number" class="block text-sm font-medium text-gray-700 mb-1">電話番号</label>
+                        <input type="tel" id="phone-number" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                    </div>
+                    <div>
+                        <label for="line-id" class="block text-sm font-medium text-gray-700 mb-1">ID</label>
+                        <input type="text" id="line-id" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="line-password" class="block text-sm font-medium text-gray-700 mb-1">パスワード</label>
+                        <input type="text" id="line-password" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="mnp-reservation-number" class="block text-sm font-medium text-gray-700 mb-1">MNP予約番号</label>
+                        <input type="text" id="mnp-reservation-number" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="mnp-expiration-date" class="block text-sm font-medium text-gray-700 mb-1">有効期限</label>
+                        <input type="date" id="mnp-expiration-date" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">メモ (契約特典など)</label>
+                        <textarea id="notes" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                    </div>
+                    <div class="border-t pt-4 space-y-4">
+                         <div>
+                            <label for="carrier" class="block text-sm font-medium text-gray-700 mb-1">契約キャリア</label>
+                            <select id="carrier" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                                <option value="" disabled selected>選択してください</option>
+                                <option value="ドコモ">ドコモ</option>
+                                <option value="au/UQ">au/UQ</option>
+                                <option value="ソフトバンク">ソフトバンク</option>
+                                <option value="ワイモバイル">ワイモバイル</option>
+                                <option value="その他">その他</option>
+                            </select>
+                        </div>
+                        <div id="other-carrier-input" class="hidden">
+                            <label for="other-carrier-name" class="block text-sm font-medium text-gray-700 mb-1">キャリア名（入力）</label>
+                            <input type="text" id="other-carrier-name" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label for="contract-date" class="block text-sm font-medium text-gray-700 mb-1">契約日</label>
+                            <input type="date" id="contract-date" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                        </div>
+                        <div id="other-inputs" class="hidden">
+                             <label for="custom-mnp-date" class="block text-sm font-medium text-gray-700 mb-1">次回MNP日(目安)を入力</label>
+                            <input type="date" id="custom-mnp-date" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end items-center mt-6 space-x-4">
+                    <button type="button" id="delete-btn" class="text-sm text-red-600 hover:text-red-800 hidden">削除</button>
+                    <button type="button" id="cancel-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition">キャンセル</button>
+                    <button type="submit" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 transition">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // DOM要素の取得
+    const addLineBtn = document.getElementById('add-line-btn');
+    const modal = document.getElementById('modal');
+    const modalContent = modal.querySelector('.modal-content');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const lineForm = document.getElementById('line-form');
+    const modalTitle = document.getElementById('modal-title');
+    const deleteBtn = document.getElementById('delete-btn');
+    const linesContainer = document.getElementById('lines-container');
+    const carrierSelect = document.getElementById('carrier');
+    const otherInputs = document.getElementById('other-inputs');
+    const otherCarrierInput = document.getElementById('other-carrier-input');
+    const contractDateInput = document.getElementById('contract-date');
+    const customMnpDateInput = document.getElementById('custom-mnp-date');
+    const otherCarrierNameInput = document.getElementById('other-carrier-name');
+
+    // モーダル開閉
+    const openModal = () => {
+        modal.classList.remove('opacity-0', 'pointer-events-none');
+        modalContent.classList.remove('scale-95');
+    };
+    const closeModal = () => {
+        modalContent.classList.add('scale-95');
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('pointer-events-none');
+            resetModal();
+        }, 300);
+    };
+    
+    // モーダルのリセット
+    const resetModal = () => {
+        lineForm.reset();
+        document.getElementById('entry-id').value = '';
+        modalTitle.textContent = '新規回線を追加';
+        deleteBtn.classList.add('hidden');
+        otherInputs.classList.add('hidden');
+        otherCarrierInput.classList.add('hidden');
+        contractDateInput.required = true;
+        customMnpDateInput.required = false;
+        otherCarrierNameInput.required = false;
+    };
+
+    // イベントリスナー
+    addLineBtn.addEventListener('click', openModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    // キャリア選択時の入力欄切り替え
+    carrierSelect.addEventListener('change', (e) => {
+        const isOther = e.target.value === 'その他';
+        otherInputs.classList.toggle('hidden', !isOther);
+        otherCarrierInput.classList.toggle('hidden', !isOther);
+        
+        // 「その他」の場合、契約日は必須でなくなり、カスタムMNP日とキャリア名が必須になる
+        contractDateInput.required = !isOther;
+        customMnpDateInput.required = isOther;
+        otherCarrierNameInput.required = isOther;
+    });
+
+    // ローカルストレージ
+    const loadLines = () => JSON.parse(localStorage.getItem('mnpLines') || '[]');
+    const saveLines = (lines) => localStorage.setItem('mnpLines', JSON.stringify(lines));
+
+    // メインのレンダリング関数
+    const renderLines = () => {
+        const lines = loadLines();
+        linesContainer.innerHTML = '';
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const processedLines = lines.map(line => {
+            let mnpDate;
+            if (line.carrier === 'その他' && line.customMnpDate) {
+                mnpDate = new Date(line.customMnpDate);
+            } else if (line.contractDate) {
+                const contractDate = new Date(line.contractDate);
+                mnpDate = new Date(contractDate);
+                let holdingPeriod = (line.carrier === 'ドコモ') ? 181 : 214;
+                mnpDate.setDate(mnpDate.getDate() + holdingPeriod);
+            } else {
+                // 日付データがない場合は遠い未来の日付にしてリストの後ろに配置
+                mnpDate = new Date('9999-12-31');
+            }
+            mnpDate.setHours(0, 0, 0, 0);
+
+            let status = 'waiting', statusText = '待機中', color = 'blue', priority = 3;
+            if (mnpDate.getFullYear() === 9999) {
+                 statusText = '日付未設定';
+            } else {
+                const diffDays = (mnpDate - today) / (1000 * 60 * 60 * 24);
+                if (diffDays <= 0) {
+                    status = 'ready'; statusText = '今すぐ乗り換えOK'; color = 'green'; priority = 1;
+                } else if (diffDays <= 30) {
+                    status = 'approaching'; statusText = `あと${Math.ceil(diffDays)}日`; color = 'yellow'; priority = 2;
+                }
+            }
+            
+            return { ...line, mnpDate, status, statusText, color, priority };
+        });
+
+        processedLines.sort((a, b) => a.priority - b.priority || a.mnpDate - b.mnpDate);
+        
+        if (processedLines.length === 0) {
+            linesContainer.innerHTML = `<div class="text-center py-12 bg-white rounded-lg shadow-sm"><p class="text-gray-500">まだ回線が登録されていません。</p><p class="text-gray-400 text-sm mt-2">右上の「新規回線を追加」ボタンから登録してください。</p></div>`;
+        } else {
+            processedLines.forEach(line => {
+                const card = document.createElement('div');
+                card.className = `bg-white rounded-lg shadow-sm p-4 border-l-4 border-${line.color}-500 space-y-3`;
+                
+                const carrierName = line.carrier === 'その他' ? line.otherCarrierName : line.carrier;
+                const contractDateStr = line.contractDate ? new Date(line.contractDate).toLocaleDateString('ja-JP') : '---';
+                const expirationDateStr = line.mnpExpirationDate ? new Date(line.mnpExpirationDate).toLocaleDateString('ja-JP') : '---';
+                const mnpDateStr = line.mnpDate.getFullYear() === 9999 ? '---' : line.mnpDate.toLocaleDateString('ja-JP');
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex-grow">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <p class="font-bold text-lg text-gray-900">${line.phoneNumber}</p>
+                                <span class="text-sm font-medium bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">${carrierName}</span>
+                            </div>
+                            <div class="text-sm text-gray-600 space-y-1">
+                                <p><strong>ID:</strong> ${line.lineId || '---'}</p>
+                                <p><strong>パスワード:</strong> ${line.linePassword || '---'}</p>
+                                <p><strong>MNP予約番号:</strong> ${line.mnpReservationNumber || '---'}</p>
+                                <p><strong>有効期限:</strong> ${expirationDateStr}</p>
+                                <p class="break-all"><strong>メモ:</strong> ${line.notes || '---'}</p>
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0 flex flex-col items-end space-y-2">
+                             <div class="text-center font-bold text-${line.color}-700 bg-${line.color}-100 border border-${line.color}-200 px-3 py-1.5 rounded-md w-32">
+                                ${line.statusText}
+                            </div>
+                             <button data-id="${line.id}" class="edit-btn text-sm text-indigo-600 hover:text-indigo-800 text-right">編集</button>
+                        </div>
+                    </div>
+                    <div class="border-t pt-2 text-sm grid grid-cols-2 gap-4">
+                         <div class="text-gray-500">
+                             <p>契約日</p>
+                             <p class="font-medium text-gray-800">${contractDateStr}</p>
+                         </div>
+                         <div class="text-gray-500">
+                             <p>次回MNP日(目安)</p>
+                             <p class="font-medium text-gray-800">${mnpDateStr}</p>
+                         </div>
+                    </div>
+                `;
+                linesContainer.appendChild(card);
+            });
+        }
+        
+        updateDashboardStats(processedLines);
+
+        document.querySelectorAll('.edit-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const entryId = e.target.dataset.id;
+                const lineToEdit = loadLines().find(l => l.id === entryId);
+                if (lineToEdit) {
+                    resetModal();
+                    document.getElementById('entry-id').value = lineToEdit.id;
+                    document.getElementById('phone-number').value = lineToEdit.phoneNumber;
+                    document.getElementById('line-id').value = lineToEdit.lineId || '';
+                    document.getElementById('line-password').value = lineToEdit.linePassword || '';
+                    document.getElementById('mnp-reservation-number').value = lineToEdit.mnpReservationNumber || '';
+                    document.getElementById('mnp-expiration-date').value = lineToEdit.mnpExpirationDate || '';
+                    document.getElementById('notes').value = lineToEdit.notes;
+                    carrierSelect.value = lineToEdit.carrier;
+                    contractDateInput.value = lineToEdit.contractDate || '';
+                    
+                    const isOther = lineToEdit.carrier === 'その他';
+                    otherInputs.classList.toggle('hidden', !isOther);
+                    otherCarrierInput.classList.toggle('hidden', !isOther);
+                    contractDateInput.required = !isOther;
+                    customMnpDateInput.required = isOther;
+                    otherCarrierNameInput.required = isOther;
+
+                    if (isOther) {
+                        otherCarrierNameInput.value = lineToEdit.otherCarrierName;
+                        customMnpDateInput.value = lineToEdit.customMnpDate;
+                    }
+
+                    modalTitle.textContent = '回線情報を編集';
+                    deleteBtn.classList.remove('hidden');
+                    openModal();
+                }
+            });
+        });
+    };
+
+    const updateDashboardStats = (lines) => {
+        document.getElementById('total-lines').textContent = lines.length;
+        document.getElementById('ready-lines').textContent = lines.filter(l => l.status === 'ready').length;
+        document.getElementById('approaching-lines').textContent = lines.filter(l => l.status === 'approaching').length;
+        document.getElementById('waiting-lines').textContent = lines.filter(l => l.status === 'waiting').length;
+    };
+
+    lineForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const lines = loadLines();
+        const entryId = document.getElementById('entry-id').value;
+        const carrierValue = carrierSelect.value;
+
+        const lineData = {
+            id: entryId || Date.now().toString(),
+            phoneNumber: document.getElementById('phone-number').value,
+            lineId: document.getElementById('line-id').value,
+            linePassword: document.getElementById('line-password').value,
+            mnpReservationNumber: document.getElementById('mnp-reservation-number').value,
+            mnpExpirationDate: document.getElementById('mnp-expiration-date').value,
+            notes: document.getElementById('notes').value,
+            carrier: carrierValue,
+            contractDate: contractDateInput.value,
+            otherCarrierName: carrierValue === 'その他' ? otherCarrierNameInput.value : null,
+            customMnpDate: carrierValue === 'その他' ? customMnpDateInput.value : null,
+        };
+        
+        if (entryId) {
+            const index = lines.findIndex(l => l.id === entryId);
+            lines[index] = lineData;
+        } else {
+            lines.push(lineData);
+        }
+        saveLines(lines);
+        renderLines();
+        closeModal();
+    });
+
+    deleteBtn.addEventListener('click', () => {
+        const entryId = document.getElementById('entry-id').value;
+        if(confirm('この回線情報を本当に削除しますか？')) {
+            let lines = loadLines();
+            lines = lines.filter(l => l.id !== entryId);
+            saveLines(lines);
+            renderLines();
+            closeModal();
+        }
+    });
+
+    renderLines();
+});
+</script>
+</body>
+</html>
